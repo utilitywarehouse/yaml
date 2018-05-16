@@ -224,11 +224,12 @@ func (p *parser) mapping() *node {
 // Decoder, unmarshals a node into a provided value.
 
 type decoder struct {
-	doc     *node
-	aliases map[*node]bool
-	mapType reflect.Type
-	terrors []string
-	strict  bool
+	doc             *node
+	aliases         map[*node]bool
+	mapType         reflect.Type
+	terrors         []string
+	strict          bool
+	useGoTimeValues bool
 }
 
 var (
@@ -240,8 +241,8 @@ var (
 	ptrTimeType    = reflect.TypeOf(&time.Time{})
 )
 
-func newDecoder(strict bool) *decoder {
-	d := &decoder{mapType: defaultMapType, strict: strict}
+func newDecoder(strict, useGoTimeValues bool) *decoder {
+	d := &decoder{mapType: defaultMapType, strict: strict, useGoTimeValues: useGoTimeValues}
 	d.aliases = make(map[*node]bool)
 	return d
 }
@@ -429,7 +430,7 @@ func (d *decoder) scalar(n *node, out reflect.Value) bool {
 	case reflect.Interface:
 		if resolved == nil {
 			out.Set(reflect.Zero(out.Type()))
-		} else if tag == yaml_TIMESTAMP_TAG {
+		} else if tag == yaml_TIMESTAMP_TAG && !d.useGoTimeValues {
 			// It looks like a timestamp but for backward compatibility
 			// reasons we set it as a string, so that code that unmarshals
 			// timestamp-like values into interface{} will continue to

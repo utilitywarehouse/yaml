@@ -813,6 +813,20 @@ func (s *S) TestDecoder(c *C) {
 	}
 }
 
+func (s *S) TestDecoderUseGoTimeValues(c *C) {
+	var str = "2015-02-24T18:19:39.123456789-03:00"
+	var t interface{}
+	dec := yaml.NewDecoder(strings.NewReader(str))
+	dec.SetUseGoTimeValues(true)
+	err := dec.Decode(&t)
+	c.Assert(err, IsNil)
+
+	c.Assert(t, FitsTypeOf, time.Time{})
+	tVal := t.(time.Time)
+	c.Assert(tVal, Equals, time.Date(2015, 2, 24, 18, 19, 39, 123456789, tVal.Location()))
+	c.Assert(tVal.In(time.UTC), Equals, time.Date(2015, 2, 24, 21, 19, 39, 123456789, time.UTC))
+}
+
 type errReader struct{}
 
 func (errReader) Read([]byte) (int, error) {

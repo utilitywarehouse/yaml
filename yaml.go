@@ -78,7 +78,7 @@ type Marshaler interface {
 // supported tag options.
 //
 func Unmarshal(in []byte, out interface{}) (err error) {
-	return unmarshal(in, out, false)
+	return unmarshal(in, out, false, false)
 }
 
 // UnmarshalStrict is like Unmarshal except that any fields that are found
@@ -86,13 +86,14 @@ func Unmarshal(in []byte, out interface{}) (err error) {
 // keys that are duplicates, will result in
 // an error.
 func UnmarshalStrict(in []byte, out interface{}) (err error) {
-	return unmarshal(in, out, true)
+	return unmarshal(in, out, true, false)
 }
 
 // A Decorder reads and decodes YAML values from an input stream.
 type Decoder struct {
-	strict bool
-	parser *parser
+	useGoTimeValues bool
+	strict          bool
+	parser          *parser
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -111,13 +112,21 @@ func (dec *Decoder) SetStrict(strict bool) {
 	dec.strict = strict
 }
 
+// SetUseGoTimeValues controlls the decoder's behaviour when unmarshalling
+// timestamp-like values into into interface{} targets. When set to true,
+// timestamps will be unmarshalled as time.Time values. By default (and for
+// compatibility purposes), timestamps will be unmarshalled as strings.
+func (dec *Decoder) SetUseGoTimeValues(useGoTimeValues bool) {
+	dec.useGoTimeValues = useGoTimeValues
+}
+
 // Decode reads the next YAML-encoded value from its input
 // and stores it in the value pointed to by v.
 //
 // See the documentation for Unmarshal for details about the
 // conversion of YAML into a Go value.
 func (dec *Decoder) Decode(v interface{}) (err error) {
-	d := newDecoder(dec.strict)
+	d := newDecoder(dec.strict, dec.useGoTimeValues)
 	defer handleErr(&err)
 	node := dec.parser.parse()
 	if node == nil {
@@ -134,9 +143,9 @@ func (dec *Decoder) Decode(v interface{}) (err error) {
 	return nil
 }
 
-func unmarshal(in []byte, out interface{}, strict bool) (err error) {
+func unmarshal(in []byte, out interface{}, strict, useGoTimeValues bool) (err error) {
 	defer handleErr(&err)
-	d := newDecoder(strict)
+	d := newDecoder(strict, useGoTimeValues)
 	p := newParser(in)
 	defer p.destroy()
 	node := p.parse()
